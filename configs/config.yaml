@@ -1,0 +1,37 @@
+project:
+  name: "ID Card Detection System"
+  version: "1.0.0"
+
+paths:
+  data_dir: "./data"
+  models_dir: "./models"
+  output_dir: "./output"
+
+detection:
+  model: "yolov8n.pt"
+  conf_threshold: 0.5
+  iou_threshold: 0.45
+  img_size: 640
+  device: "cpu"  # or "cuda:0"
+
+ocr:
+  use_angle_cls: true
+  lang: "vi"
+  det: true
+  rec: true
+  use_gpu: false
+
+classification:
+  classes:
+    - "cccd_front"
+    - "cccd_back"
+    - "driving_license_front"
+    - "driving_license_back"
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  debug: true
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:5173"
