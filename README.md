@@ -1,4 +1,3 @@
-"""
 # ID Card Detection System
 
 Hệ thống phát hiện và trích xuất thông tin từ CCCD và Bằng lái xe Việt Nam.
@@ -15,7 +14,7 @@ Hệ thống phát hiện và trích xuất thông tin từ CCCD và Bằng lái
 
 ### 1. Clone repository
 ```bash
-git clone <your-repo>
+git clone <https://github.com/qhuyitb/vietnamese-id-card-ocr>
 cd id-card-detection
 ```
 
@@ -117,4 +116,3 @@ id-card-detection/
 ## License
 
 MIT License
-"""
