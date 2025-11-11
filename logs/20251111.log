@@ -1,0 +1,17 @@
+2025-11-11 08:44:02,594 - src.pipeline.main_pipeline - INFO - Processing image: C:\Users\toqua\AppData\Local\Temp\tmpywqj097o.jpg
+2025-11-11 08:44:03,445 - src.pipeline.main_pipeline - INFO - Detected person with confidence 0.82
+2025-11-11 08:44:03,710 - src.pipeline.main_pipeline - ERROR - Error processing image: PaddleOCR.predict() got an unexpected keyword argument 'cls'
+2025-11-11 08:46:18,480 - src.pipeline.main_pipeline - INFO - Processing image: C:\Users\toqua\AppData\Local\Temp\tmpn2bt30_h.png
+2025-11-11 08:46:18,677 - src.pipeline.main_pipeline - INFO - Detected person with confidence 0.76
+2025-11-11 08:46:18,780 - src.pipeline.main_pipeline - ERROR - Error processing image: PaddleOCR.predict() got an unexpected keyword argument 'cls'
+2025-11-11 08:56:16,529 - src.pipeline.main_pipeline - INFO - Processing image: C:\Users\toqua\AppData\Local\Temp\tmpre6mthcs.png
+2025-11-11 08:59:03,473 - src.pipeline.main_pipeline - INFO - Processing image: C:\Users\toqua\AppData\Local\Temp\tmprnvld86z.png
+2025-11-11 08:59:03,473 - src.pipeline.main_pipeline - INFO - Skipping detection, processing full image
+2025-11-11 08:59:08,343 - src.pipeline.main_pipeline - ERROR - Error processing image: PaddleOCR.predict() got an unexpected keyword argument 'cls'
+2025-11-11 09:00:37,303 - src.pipeline.main_pipeline - INFO - Processing image: C:\Users\toqua\AppData\Local\Temp\tmph92sv4ln.png
+2025-11-11 09:00:37,305 - src.pipeline.main_pipeline - INFO - Skipping detection, processing full image
+2025-11-11 09:04:09,725 - src.pipeline.main_pipeline - ERROR - Error processing image: string index out of range
+2025-11-11 09:10:06,132 - src.pipeline.main_pipeline - INFO - Processing image: C:\Users\toqua\AppData\Local\Temp\tmpc5y8yby5.png
+2025-11-11 09:12:31,543 - src.pipeline.main_pipeline - INFO - Processing image: C:\Users\toqua\AppData\Local\Temp\tmp09_xtpsp.jpg
+2025-11-11 09:15:53,868 - src.pipeline.main_pipeline - INFO - Processing image: C:\Users\toqua\AppData\Local\Temp\tmpq9zuqbps.jpg
+2025-11-11 09:24:15,225 - src.pipeline.main_pipeline - INFO - Processing image: C:\Users\toqua\AppData\Local\Temp\tmpg94z4cpm.jpg

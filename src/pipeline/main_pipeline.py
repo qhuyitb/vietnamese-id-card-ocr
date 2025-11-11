@@ -1,81 +1,94 @@
+# src/pipeline/main_pipeline.py
 import cv2
 import numpy as np
-from typing import Dict, Any, Optional
-from pathlib import Path
-
-from src.detection.detector import IDCardDetector
 from src.ocr.ocr_engine import OCREngine
 from src.ocr.field_parser import FieldParser
-from src.preprocessing.image_processing import ImageProcessor
-from src.utils.logger import setup_logger
+
+def convert_numpy_to_native(obj):
+    """Recursively convert numpy types to Python native types"""
+    if isinstance(obj, dict):
+        return {k: convert_numpy_to_native(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [convert_numpy_to_native(item) for item in obj]
+    elif isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    else:
+        return obj
 
 class IDCardPipeline:
-    def __init__(self, config: Dict[str, Any]):
-        self.logger = setup_logger(__name__)
-        self.detector = IDCardDetector(
-            model_path=config.get('detection.model', 'yolov8n.pt'),
-            conf_threshold=config.get('detection.conf_threshold', 0.5)
-        )
-        self.ocr_engine = OCREngine(
-            lang=config.get('ocr.lang', 'vi'),
-            use_gpu=config.get('ocr.use_gpu', False)
-        )
-        self.image_processor = ImageProcessor()
+    def __init__(self):
+        self.ocr_engine = OCREngine(lang='vi')
         self.field_parser = FieldParser()
     
-    def process(self, image_path: str) -> Dict[str, Any]:
+    def process(self, image_input):
         """
-        Xử lý ảnh CCCD/Bằng lái từ đầu đến cuối
+        Xử lý ảnh CCCD/Bằng lái
+        Args:
+            image_input: numpy array hoặc đường dẫn file
         """
         try:
-            # Đọc ảnh
-            image = cv2.imread(image_path)
-            if image is None:
-                raise ValueError(f"Cannot read image: {image_path}")
+            # Đọc ảnh nếu là đường dẫn
+            if isinstance(image_input, str):
+                print(f"📂 Đọc ảnh từ: {image_input}")
+                image = cv2.imread(image_input)
+                if image is None:
+                    raise ValueError(f"Không đọc được ảnh: {image_input}")
+            elif isinstance(image_input, np.ndarray):
+                image = image_input
+            else:
+                raise ValueError(f"image_input không hợp lệ: {type(image_input)}")
             
-            self.logger.info(f"Processing image: {image_path}")
+            print("⚠️  Skipping YOLOv8 detection (chưa train model)")
+            print("🔍 OCR toàn bộ ảnh...")
             
-            # Bước 1: Detect
-            detections = self.detector.detect(image)
-            if not detections:
+            # OCR - Truyền numpy array
+            ocr_results = self.ocr_engine.extract_text(image)
+            full_text = self.ocr_engine.get_full_text(image)
+            
+            if not ocr_results:
                 return {
-                    'success': False,
-                    'message': 'No ID card or driving license detected'
+                    "success": False,
+                    "message": "Không phát hiện text trong ảnh",
+                    "full_text": "",
+                    "ocr_results": [],
+                    "parsed_data": {}
                 }
             
-            # Lấy detection có confidence cao nhất
-            best_detection = max(detections, key=lambda x: x['confidence'])
-            self.logger.info(f"Detected {best_detection['class_name']} with confidence {best_detection['confidence']:.2f}")
+            print(f"📄 Full text:\n{full_text}\n")
             
-            # Bước 2: Crop ảnh
-            cropped = self.detector.crop_detected_area(image, best_detection['bbox'])
+            # Parse thông tin
+            parsed_data = self.field_parser.parse(full_text, ocr_results)
             
-            # Bước 3: Cải thiện ảnh
-            enhanced = self.image_processor.enhance_image(cropped)
-            
-            # Bước 4: OCR
-            ocr_results = self.ocr_engine.extract_text(cropped)
-            full_text = '\n'.join([r['text'] for r in ocr_results])
-            
-            # Bước 5: Parse thông tin
-            if 'cccd' in best_detection['class_name'].lower():
-                parsed_data = self.field_parser.parse_cccd_front(full_text)
-            elif 'driving' in best_detection['class_name'].lower():
-                parsed_data = self.field_parser.parse_driving_license(full_text)
-            else:
-                parsed_data = {}
-            
-            return {
-                'success': True,
-                'detection': best_detection,
-                'ocr_raw': ocr_results,
-                'full_text': full_text,
-                'parsed_data': parsed_data
+            # Build result và convert toàn bộ numpy types
+            result = {
+                "success": True,
+                "detection": {
+                    "bbox": [0, 0, int(image.shape[1]), int(image.shape[0])],
+                    "confidence": 1.0,
+                    "class_name": "full_image"
+                },
+                "full_text": full_text,
+                "ocr_results": ocr_results,
+                "parsed_data": parsed_data
             }
             
+            # Convert tất cả numpy types sang Python native types
+            return convert_numpy_to_native(result)
+            
         except Exception as e:
-            self.logger.error(f"Error processing image: {str(e)}")
+            print(f"❌ Lỗi pipeline: {e}")
+            import traceback
+            traceback.print_exc()
             return {
-                'success': False,
-                'message': str(e)
+                "success": False,
+                "message": str(e),
+                "full_text": "",
+                "ocr_results": [],
+                "parsed_data": {}
             }

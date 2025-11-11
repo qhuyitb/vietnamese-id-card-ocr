@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhận diện CCCD/Bằng Lái Xe</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f1ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8e9ff;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .preview-section {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .preview-section.active {
+            display: block;
+        }
+
+        .preview-img {
+            max-width: 100%;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .result-section {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 10px;
+        }
+
+        .result-section.active {
+            display: block;
+        }
+
+        .result-item {
+            display: flex;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-label {
+            font-weight: bold;
+            color: #667eea;
+            min-width: 150px;
+        }
+
+        .result-value {
+            color: #333;
+            flex: 1;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        .success-badge {
+            background: #4caf50;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+
+        .confidence {
+            color: #4caf50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🪪 Nhận Diện CCCD/Bằng Lái Xe</h1>
+        <p class="subtitle">Upload ảnh để trích xuất thông tin tự động</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📤</div>
+            <h3>Kéo thả ảnh vào đây hoặc click để chọn</h3>
+            <p style="color: #999; margin-top: 10px;">Hỗ trợ: JPG, PNG, JPEG</p>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div style="text-align: center;">
+            <button class="btn" id="uploadBtn" disabled>📸 Xử lý ảnh</button>
+            <button class="btn" id="resetBtn" style="background: #ccc; display: none;">🔄 Chọn ảnh khác</button>
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <h3>👁️ Xem trước:</h3>
+            <img id="previewImg" class="preview-img" src="" alt="Preview">
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Đang xử lý ảnh, vui lòng đợi...</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="result-section" id="resultSection">
+            <span class="success-badge">✓ Nhận diện thành công</span>
+            <h3>📋 Thông tin trích xuất:</h3>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const previewSection = document.getElementById('previewSection');
+        const previewImg = document.getElementById('previewImg');
+        const loading = document.getElementById('loading');
+        const resultSection = document.getElementById('resultSection');
+        const resultContent = document.getElementById('resultContent');
+        const errorMessage = document.getElementById('errorMessage');
+
+        let selectedFile = null;
+
+        // Click to upload
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleFile(file);
+            }
+        });
+
+        function handleFile(file) {
+            selectedFile = file;
+            
+            // Preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                previewSection.classList.add('active');
+                uploadBtn.disabled = false;
+                resetBtn.style.display = 'inline-block';
+            };
+            reader.readAsDataURL(file);
+
+            // Hide previous results
+            resultSection.classList.remove('active');
+            errorMessage.classList.remove('active');
+        }
+
+        // Upload and process
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            loading.classList.add('active');
+            uploadBtn.disabled = true;
+            resultSection.classList.remove('active');
+            errorMessage.classList.remove('active');
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/process', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    showError(data.message || 'Không thể xử lý ảnh');
+                }
+            } catch (error) {
+                showError('Lỗi kết nối API: ' + error.message);
+            } finally {
+                loading.classList.remove('active');
+                uploadBtn.disabled = false;
+            }
+        });
+
+        // Reset
+        resetBtn.addEventListener('click', () => {
+            selectedFile = null;
+            fileInput.value = '';
+            previewSection.classList.remove('active');
+            resultSection.classList.remove('active');
+            errorMessage.classList.remove('active');
+            uploadBtn.disabled = true;
+            resetBtn.style.display = 'none';
+        });
+
+        function displayResults(data) {
+            let html = '';
+
+            // Detection info
+            if (data.detection) {
+                html += `
+                    <div class="result-item">
+                        <span class="result-label">Loại giấy tờ:</span>
+                        <span class="result-value">${data.detection.class_name || 'N/A'}</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Độ tin cậy:</span>
+                        <span class="result-value confidence">${(data.detection.confidence * 100).toFixed(2)}%</span>
+                    </div>
+                `;
+            }
+
+            // Parsed data
+            if (data.parsed_data) {
+                for (const [key, value] of Object.entries(data.parsed_data)) {
+                    if (value) {
+                        const labelMap = {
+                            'id_number': 'Số CCCD',
+                            'license_number': 'Số bằng lái',
+                            'full_name': 'Họ và tên',
+                            'date_of_birth': 'Ngày sinh',
+                            'gender': 'Giới tính',
+                            'nationality': 'Quốc tịch',
+                            'place_of_origin': 'Quê quán',
+                            'place_of_residence': 'Nơi thường trú',
+                            'expiry_date': 'Ngày hết hạn',
+                            'class': 'Hạng bằng',
+                            'issue_date': 'Ngày cấp'
+                        };
+
+                        html += `
+                            <div class="result-item">
+                                <span class="result-label">${labelMap[key] || key}:</span>
+                                <span class="result-value">${value}</span>
+                            </div>
+                        `;
+                    }
+                }
+            }
+
+            // Full text
+            if (data.full_text) {
+                html += `
+                    <div class="result-item" style="display: block;">
+                        <span class="result-label">Text đầy đủ:</span>
+                        <pre style="white-space: pre-wrap; margin-top: 10px; color: #666;">${data.full_text}</pre>
+                    </div>
+                `;
+            }
+
+            resultContent.innerHTML = html;
+            resultSection.classList.add('active');
+        }
+
+        function showError(message) {
+            errorMessage.textContent = '❌ ' + message;
+            errorMessage.classList.add('active');
+        }
+    </script>
+</body>
+</html>

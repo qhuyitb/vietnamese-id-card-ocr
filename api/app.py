@@ -1,67 +1,91 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 import cv2
 import numpy as np
+import sys
 from pathlib import Path
-import tempfile
-import shutil
+
+# Thêm root vào sys.path
+ROOT_DIR = Path(__file__).parent.parent
+sys.path.insert(0, str(ROOT_DIR))
 
 from src.pipeline.main_pipeline import IDCardPipeline
-from src.utils.config import Config
-from api.schemas.response import ProcessResponse
 
-# Initialize
-app = FastAPI(title="ID Card Detection API", version="1.0.0")
-config = Config()
+# Khởi tạo FastAPI
+app = FastAPI(
+    title="Vietnamese ID Card OCR API",
+    version="1.0.0"
+)
 
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config.get('api.cors_origins', ['*']),
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialize pipeline
-pipeline = IDCardPipeline(config.config)
+# Khởi tạo Pipeline - BỎ config.config
+pipeline = IDCardPipeline()  # ✅ ĐÚNG - Không truyền gì
 
 @app.get("/")
-async def root():
-    return {"message": "ID Card Detection API", "version": "1.0.0"}
+def read_root():
+    """Health check"""
+    return {
+        "message": "Vietnamese ID Card OCR API",
+        "status": "running"
+    }
 
-@app.post("/api/process", response_model=ProcessResponse)
+@app.post("/api/process")
 async def process_image(file: UploadFile = File(...)):
-    """
-    Upload và xử lý ảnh CCCD/Bằng lái xe
-    """
-    if not file.content_type.startswith('image/'):
-        raise HTTPException(status_code=400, detail="File must be an image")
-    
-    # Save uploaded file temporarily
-    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as tmp:
-        shutil.copyfileobj(file.file, tmp)
-        tmp_path = tmp.name
-    
+    """Xử lý ảnh CCCD/Bằng lái xe"""
     try:
-        # Process image
-        result = pipeline.process(tmp_path)
-        return ProcessResponse(**result)
-    
-    finally:
-        # Cleanup
-        Path(tmp_path).unlink(missing_ok=True)
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
+        print("=" * 50)
+        print("🔵 BẮT ĐẦU XỬ LÝ")
+        
+        # 1. Validate file type
+        print(f"📁 File: {file.filename}")
+        print(f"📁 Content-Type: {file.content_type}")
+        
+        if not file.content_type.startswith('image/'):
+            raise HTTPException(400, "File phải là ảnh")
+        
+        # 2. Đọc file
+        print("📖 Đang đọc file...")
+        contents = await file.read()
+        print(f"📖 Đã đọc {len(contents)} bytes")
+        
+        # 3. Decode ảnh
+        print("🖼️  Đang decode ảnh...")
+        nparr = np.frombuffer(contents, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if image is None:
+            print("❌ cv2.imdecode trả về None!")
+            raise HTTPException(400, "Không đọc được ảnh (decode failed)")
+        
+        print(f"✅ Decode thành công: {image.shape}")
+        
+        # 4. Process
+        print("🔄 Đang xử lý với pipeline...")
+        result = pipeline.process(image)
+        
+        print(f"✅ Xử lý xong: success={result.get('success')}")
+        print("=" * 50)
+        
+        return result
+        
+    except HTTPException as he:
+        print(f"⚠️  HTTPException: {he.detail}")
+        raise
+    except Exception as e:
+        print(f"❌ Exception: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(500, f"Lỗi server: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "app:app",
-        host=config.get('api.host', '0.0.0.0'),
-        port=config.get('api.port', 8000),
-        reload=config.get('api.debug', True)
-    )
+    print("🚀 Starting server at http://localhost:8000")
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
