@@ -45,6 +45,72 @@ python scripts/prepare_dataset.py
 ```
 
 ### 2. Train model (nếu có dataset)
+📍 Trường hợp 1: TRAIN TRÊN GOOGLE COLAB
+1. CHUẨN BỊ:
+   ├─ Upload dataset lên Google Drive
+   │  └─ MyDrive/CCCD_Dataset/
+   │      ├─ train/
+   │      ├─ valid/
+   │      ├─ test/
+   │      └─ data.yaml
+   │
+   └─ Chạy code Colab (đã cung cấp trước đó)
+
+2. TRAINING TRÊN COLAB:
+   ├─ Code tự động train
+   ├─ Kết quả lưu vào Drive:
+   │  └─ MyDrive/YOLO_Results/cccd_detection/
+   │      └─ weights/
+   │          ├─ best.pt      ← Model tốt nhất
+   │          └─ last.pt      ← Model cuối cùng
+   │
+   └─ Thời gian: 30-60 phút (với GPU T4)
+
+3. SAU KHI TRAIN XONG:
+   ├─ Download từ Drive về máy local:
+   │  └─ best.pt  (file này thôi là đủ)
+   │
+   └─ Copy vào project:
+      └─ your_project/models/cccd_yolo/weights/best.pt
+
+📍 Trường hợp 2: TRAIN TRÊN LOCAL (Nếu có GPU)
+1. CHUẨN BỊ:
+   └─ Dataset đã có sẵn trong project
+      └─ your_project/CCCD_Dataset/
+          ├─ train/
+          ├─ valid/
+          ├─ test/
+          └─ data.yaml
+
+2. KIỂM TRA GPU:
+   └─ Chạy lệnh:
+      python -c "import torch; print(torch.cuda.is_available())"
+   
+   ├─ True  → Có GPU, train được
+   └─ False → Không GPU, SẼ RẤT CHẬM (không khuyên)
+
+3. TRAINING LOCAL:
+   └─ Chạy script:
+      python scripts/train_detector.py
+   
+   ├─ Script tự động:
+   │  ├─ Kiểm tra dataset
+   │  ├─ Load pretrained model (yolov8s.pt)
+   │  ├─ Train 100 epochs
+   │  └─ Lưu kết quả
+   │
+   └─ Kết quả tự động lưu tại:
+      └─ your_project/models/cccd_yolo/
+          ├─ weights/
+          │   ├─ best.pt   ← Dùng file này
+          │   └─ last.pt
+          ├─ results.png
+          ├─ confusion_matrix.png
+          └─ ...
+
+4. SỬ DỤNG LUÔN:
+   └─ Model đã ở đúng chỗ, chạy ngay:
+      
 ```bash
 python scripts/train_detector.py
 ```
