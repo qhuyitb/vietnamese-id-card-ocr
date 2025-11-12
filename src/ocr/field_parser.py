@@ -14,6 +14,7 @@ class FieldParser:
         text = self._clean_text(full_text)
         
         data = {
+            'card_type': self.detect_card_type(text),  # ← THÊM NHẬN DIỆN LOẠI THẺ
             'id_number': self._extract_id_number(text),
             'full_name': self._extract_name(text),
             'date_of_birth': self._extract_dob(text),
@@ -40,32 +41,100 @@ class FieldParser:
         text = re.sub(r'\s+', ' ', text)
         return text
     
+    def detect_card_type(self, text: str) -> str:
+        """Nhận diện loại giấy tờ"""
+        text_upper = text.upper()
+        
+        if 'CĂN CƯỚC' in text_upper or 'CITIZEN IDENTITY' in text_upper:
+            return 'Căn cước công dân'
+        elif 'CHỨNG MINH' in text_upper or 'IDENTITY CARD' in text_upper:
+            return 'Chứng minh nhân dân'
+        elif 'PASSPORT' in text_upper or 'HỘ CHIẾU' in text_upper:
+            return 'Hộ chiếu'
+        
+        return 'Unknown'
+    
     def _extract_id_number(self, text: str) -> Optional[str]:
         """Tìm số ID (12 chữ số)"""
         match = re.search(r'\b\d{12}\b', text)
         return match.group() if match else None
     
     def _extract_name(self, text: str) -> Optional[str]:
-        """Tìm họ tên (2-4 từ viết hoa liên tiếp)"""
-        # Tìm 2-4 từ viết HOA liên tiếp
+        """Tìm họ tên - cải thiện với spell correction"""
+        # Pattern: 2-4 từ viết HOA liên tiếp
         pattern = r'\b([A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]{2,}(?:\s+[A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]{2,}){1,3})\b'
         
         matches = re.findall(pattern, text)
         
-        # Filter: loại bỏ các keyword không phải tên
-        blacklist = ['SOCIALIST', 'REPUBLIC', 'VIET', 'NAM', 'CITIZEN', 'IDENTITY', 'CARD', 
-                     'INDEPENDENCE', 'FREEDOM', 'HAPPINESS', 'CÔNG', 'DÂN', 'CĂN', 'CƯỚC',
-                     'NGHÍA', 'NGHĨA', 'CHỦ', 'CHÙ']
+        # Blacklist mở rộng - thêm các variation không dấu
+        blacklist = [
+            'SOCIALIST', 'REPUBLIC', 'VIET', 'NAM', 'VIETNAM', 'CITIZEN', 'IDENTITY', 'CARD',
+            'INDEPENDENCE', 'FREEDOM', 'HAPPINESS', 'CÔNG', 'CONG', 'HÓA', 'HOA', 'HÒA',
+            'DÂN', 'DAN', 'CĂN', 'CAN', 'CƯỚC', 'CUOC', 'CHỦ', 'CHU', 'CHÙ',
+            'NGHĨA', 'NGHIA', 'XÃ', 'XA', 'HỘI', 'HOI', 'VIỆT', 'VIET', 'VET'
+        ]
+        
+        valid_names = []
         
         for name in matches:
-            # Check không phải keyword
-            if not any(kw in name.upper() for kw in blacklist):
-                # Check có 2-4 từ
-                words = name.split()
-                if 2 <= len(words) <= 4:
-                    return name
+            # Skip nếu chứa keyword
+            if any(kw in name.upper().replace(' ', '') for kw in blacklist):
+                continue
+            
+            # Check có 2-4 từ
+            words = name.split()
+            if not (2 <= len(words) <= 4):
+                continue
+            
+            # Priority: tên ở giữa text (không phải đầu)
+            # Tìm vị trí trong text
+            pos = text.find(name)
+            score = pos / len(text)  # Càng xa đầu càng tốt
+            
+            valid_names.append((name, score))
         
+        # Sắp xếp theo score, chọn tên ở giữa
+        if valid_names:
+            valid_names.sort(key=lambda x: x[1], reverse=True)
+            name = valid_names[0][0]
+            # Fix spelling errors
+            name = self._fix_name_spelling(name)
+            return name
+    
         return None
+    
+    def _fix_name_spelling(self, name: str) -> str:
+        """Fix common OCR errors in Vietnamese names"""
+        corrections = {
+            'NGUYN': 'NGUYỄN',
+            'TRÂN': 'TRẦN',
+            'L': 'LÊ',
+            'LE': 'LÊ',
+            'PHM': 'PHẠM',
+            'PHAM': 'PHẠM',
+            'HUỲH': 'HUỲNH',
+            'HUYNH': 'HUỲNH',
+            'VÕ': 'VÕ',
+            'VO': 'VÕ',
+            'DƯƠNG': 'DƯƠNG',
+            'DUONG': 'DƯƠNG',
+            'BÙI': 'BÙI',
+            'BUI': 'BÙI',
+            'ĐÀO': 'ĐÀO',
+            'DAO': 'ĐÀO',
+            'ĐỖ': 'ĐỖ',
+            'DO': 'ĐỖ',
+        }
+        
+        words = name.split()
+        fixed_words = []
+        
+        for word in words:
+            # Kiểm tra từng từ có trong corrections không
+            fixed_word = corrections.get(word, word)
+            fixed_words.append(fixed_word)
+        
+        return ' '.join(fixed_words)
     
     def _extract_dob(self, text: str) -> Optional[str]:
         """Tìm ngày sinh (dd/mm/yyyy) - flexible"""
@@ -91,12 +160,23 @@ class FieldParser:
         return None
     
     def _extract_gender(self, text: str) -> Optional[str]:
-        """Tìm giới tính"""
-        match = re.search(r'\b(Nam|Nữ|Male|Female)\b', text, re.IGNORECASE)
-        if match:
-            gender = match.group(1)
-            # Capitalize properly
-            return gender.capitalize() if gender.lower() in ['nam', 'nữ'] else gender
+        """Tìm giới tính - improved with context"""
+        # Ưu tiên tìm theo context trước
+        patterns = [
+            r'(?:Giới\s*tính|Sex)[:\s]+(Nữ|Nam|Female|Male)',  # Có context
+            r'\b(Nữ|Nam|Female|Male)\b'  # Fallback
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                gender = match.group(1)
+                # Normalize
+                if gender.lower() in ['nữ', 'female']:
+                    return 'Nữ'
+                elif gender.lower() in ['nam', 'male']:
+                    return 'Nam'
+        
         return None
     
     def _extract_nationality(self, text: str) -> Optional[str]:
@@ -116,7 +196,7 @@ class FieldParser:
                 nationality = parts[0].strip()
                 
                 # Normalize
-                nationality = nationality.replace('Viêt', 'Việt').replace('VIT', 'Việt')
+                nationality = nationality.replace('Viêt', 'Việt').replace('VIT', 'Việt').replace('Viet', 'Việt')
                 
                 # Validate: chỉ chữ cái và space, 2-20 ký tự
                 if re.match(r'^[A-Za-zÀ-ỹ\s]{2,20}$', nationality):
@@ -127,7 +207,7 @@ class FieldParser:
     def _extract_origin(self, text: str) -> Optional[str]:
         """Tìm quê quán"""
         patterns = [
-            r'origin[:\s]+(.+?)(?:\s+(?:thuòng|Noi|Place\s+of\s+residence|Có\s+giá)|$)',
+            r'origin[:\s]+(.+?)(?:\s+(?:thuòng|thu[oò]ng|Noi|Place\s+of\s+residence|Có\s+giá)|$)',
             r'Quê\s+quán[:\s/]+(.+?)(?:\s+Nơi|$)'
         ]
         
@@ -137,7 +217,7 @@ class FieldParser:
                 origin = match.group(1).strip()
                 
                 # Remove junk
-                origin = re.sub(r'thuòng\s+', '', origin, flags=re.IGNORECASE)
+                origin = re.sub(r'thu[oò]ng\s+', '', origin, flags=re.IGNORECASE)
                 origin = re.sub(r'\s+', ' ', origin).strip()
                 
                 # Lấy tối đa 100 ký tự
@@ -150,10 +230,12 @@ class FieldParser:
         return None
     
     def _extract_residence(self, text: str) -> Optional[str]:
-        """Tìm nơi thường trú - improved"""
+        """Tìm nơi thường trú - fixed version"""
         patterns = [
-            r'residence[:\s]+(.+?)(?=Có\s+giá|Date\s+of\s+expiry|$)',
-            r'Nơi\s+trú[:\s/]+(.+?)(?=Có|$)'
+            # Pattern 1: Tìm giữa "residence" và "Date of expiry" hoặc "Có giá"
+            r'residence[:\s]+(.+?)(?=\s*(?:Co|Có)\s+gia|Date\s+of\s+expiry|$)',
+            # Pattern 2: Tiếng Việt
+            r'Noi\s+thu[oò]ng\s+tr[uú][:\s/]+(.+?)(?=\s*(?:Co|Có)\s+gia|$)',
         ]
         
         for pattern in patterns:
@@ -161,19 +243,21 @@ class FieldParser:
             if match:
                 residence = match.group(1).strip()
                 
-                # Remove junk text
+                # Aggressive cleaning - remove junk text
                 junk_patterns = [
                     r'Noi\s+trú[:/\s]+',
                     r'Place\s+of\s+residence[:\s]+',
-                    r'thuòng\s+',
-                    r'\s+Place\s+\d+.*$',  # "Place 6" and after
-                    r'\s+Place$'
+                    r'thu[oò]ng\s+',
+                    r'\s*(?:Co|Có)\s+gia.*$',  # Remove "Co gia tri den..."
+                    r'\s*Date\s+of.*$',        # Remove "Date of expiry..."
+                    r'\s+Place\s+\d+.*$',      # Remove "Place 6"
+                    r'\s+Place$',
                 ]
                 
                 for jp in junk_patterns:
                     residence = re.sub(jp, '', residence, flags=re.IGNORECASE)
                 
-                # Clean
+                # Clean spaces and slashes
                 residence = re.sub(r'\s+', ' ', residence).strip()
                 residence = residence.rstrip('/')
                 
@@ -189,7 +273,7 @@ class FieldParser:
     def _extract_expiry(self, text: str) -> Optional[str]:
         """Tìm ngày hết hạn - flexible"""
         patterns = [
-            r'(?:Có\s+giá\s+trị\s+đến|giá\s+trj\s+dên)[:\s]+(\d{2}/\d{2}/\d{4})',
+            r'(?:Có\s+giá\s+trị\s+đến|Co\s+gia\s+tri\s+den|giá\s+trj\s+dên)[:\s]+(\d{2}/\d{2}/\d{4})',
             r'(?:Date\s+of\s+)?expiry[:\s]+(\d{2}/\d{2}/\d{4})'
         ]
         

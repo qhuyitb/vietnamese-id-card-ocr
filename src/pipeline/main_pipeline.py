@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from src.ocr.ocr_engine import OCREngine
 from src.ocr.field_parser import FieldParser
+from src.preprocessing.image_processing import ImageProcessor
 
 def convert_numpy_to_native(obj):
     """Recursively convert numpy types to Python native types"""
@@ -47,6 +48,9 @@ class IDCardPipeline:
             print("⚠️  Skipping YOLOv8 detection (chưa train model)")
             print("🔍 OCR toàn bộ ảnh...")
             
+            # OCR - Truyền numpy array
+          
+           
             # OCR - Truyền numpy array
             ocr_results = self.ocr_engine.extract_text(image)
             full_text = self.ocr_engine.get_full_text(image)

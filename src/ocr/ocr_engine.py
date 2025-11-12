@@ -8,6 +8,10 @@ class OCREngine:
         self.ocr = PaddleOCR(
             use_angle_cls=True,
             lang=lang,
+            # det_db_thresh=0.3,      # ← Thêm: ngưỡng detection thấp hơn
+            # det_db_box_thresh=0.5,   # ← Thêm: confidence box cao hơn
+            # rec_batch_num=6,         # ← Thêm: batch size
+            # use_space_char=True      # ← Quan trọng cho tiếng Việt
             # use_gpu=use_gpu,
             # show_log=False
         )
