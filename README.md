@@ -393,6 +393,14 @@ Dự án này được phát hành dưới giấy phép **MIT License**. Xem fil
 
 ---
 
+## ⚠️ Lưu ý sử dụng & Từ chối trách nhiệm
+
+Dự án này được phát triển **vì mục đích học tập, nghiên cứu và minh họa kỹ thuật**. Không được sử dụng phần mềm này cho bất kỳ hành vi bất hợp pháp nào, xâm phạm quyền riêng tư, hoặc thu thập/chia sẻ dữ liệu cá nhân mà không có sự đồng ý hợp pháp của chủ sở hữu dữ liệu.
+
+**Tác giả và các đóng góp viên không chịu trách nhiệm** cho bất kỳ tổn thất, thiệt hại, hậu quả pháp lý hoặc trách nhiệm phát sinh từ việc sử dụng, lạm dụng hoặc triển khai phần mềm này. Phần mềm được cung cấp **“AS IS”** (nguyên trạng) — không có bất kỳ bảo đảm nào về tính chính xác, an toàn, khả năng tương thích hay tính phù hợp cho mục đích cụ thể.
+
+---
+
 ## 📧 Liên hệ (Contact)
 
 - **GitHub**: [@qhuyitb](https://github.com/qhuyitb)
